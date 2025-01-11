@@ -1,5 +1,7 @@
 # Yahoo Checker
 
+Phần mềm miễn phí được cung cấp bởi [CheckerCCV](https://checkerccv.tv/).
+
 Một script kiểm tra trạng thái tài khoản email Yahoo.
 
 ## Yêu cầu
@@ -31,7 +33,7 @@ pip install -r requirements.txt
   ```
   example@yahoo.com
   example2@yahoo.com:password
-  example3@yahoo.com|additional_info
+  example3@yahoo.com|password
   ```
 
 ### Bước 4: Chạy script

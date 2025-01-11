@@ -9,6 +9,7 @@ from urllib3.exceptions import InsecureRequestWarning
 from urllib3 import disable_warnings
 from concurrent.futures import ThreadPoolExecutor
 import threading
+import time
 
 disable_warnings(InsecureRequestWarning)
 
@@ -17,6 +18,7 @@ session_usage_counter = Counter()
 
 # Lock for thread-safe access to session files
 session_file_lock = threading.Lock()
+
 
 def load_proxies(file_path):
     if not os.path.exists(file_path):
@@ -33,10 +35,12 @@ def load_proxies(file_path):
 
     return proxies
 
+
 def get_random_proxy(proxies):
     if not proxies:
         raise ValueError("Proxy list is empty.")
     return random.choice(proxies)
+
 
 def load_user_ids(file_path):
     if not os.path.exists(file_path):
@@ -53,28 +57,33 @@ def load_user_ids(file_path):
 
     return list(user_lines.values())  # Return unique original lines
 
+
 def get_random_session_file(session_folder):
     global session_usage_counter
 
-    with session_file_lock:  # Ensure thread-safe access
-        # Get a list of all files in the session folder
-        session_files = [f for f in os.listdir(session_folder) if f.endswith('.json')]
+    while True:  # Loop until session files are available
+        with session_file_lock:  # Ensure thread-safe access
+            # Get a list of all files in the session folder
+            session_files = [f for f in os.listdir(session_folder) if f.endswith('.json')]
 
-        # Filter out files used more than 3 times
-        available_files = [f for f in session_files if session_usage_counter[f] < 3]
+            # Filter out files used more than 3 times
+            available_files = [f for f in session_files if session_usage_counter[f] < 3]
 
-        if not available_files:
-            raise ValueError("No available session files (max usage reached for all files).")
+            if available_files:
+                # Select a random available file
+                selected_file = random.choice(available_files)
+                session_usage_counter[selected_file] += 1
 
-        # Select a random available file
-        selected_file = random.choice(available_files)
-        session_usage_counter[selected_file] += 1
+                # Delete the file if it reaches the maximum usage limit
+                if session_usage_counter[selected_file] >= 3:
+                    os.remove(os.path.join(session_folder, selected_file))
 
-        # Delete the file if it reaches the maximum usage limit
-        if session_usage_counter[selected_file] >= 3:
-            os.remove(os.path.join(session_folder, selected_file))
+                return os.path.join(session_folder, selected_file)
 
-        return os.path.join(session_folder, selected_file)
+        # If no files are found, print a reminder and wait
+        print("No session files found. Please run 'create_session.py' to generate session files.")
+        time.sleep(10)  # Wait for 10 seconds before retrying
+
 
 def fetch_from_random_session_file(userId, proxies):
     try:
@@ -144,6 +153,7 @@ def fetch_from_random_session_file(userId, proxies):
     except RequestException as e:
         return 'Retry'
 
+
 def process_user_id(original_line, proxies):
     userId = re.split(r"[@:|]", original_line.strip())[0]
     while True:
@@ -159,6 +169,7 @@ def process_user_id(original_line, proxies):
             break
         elif checkYahoo == 'Retry':
             continue
+
 
 # Main function
 if __name__ == "__main__":
